@@ -1,47 +1,43 @@
-import { Component } from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
-// import { GrClose } from 'react-icons/gr';
-import { Overlay, ModalStyled } from './Modal.styled';
+import { GrClose } from 'react-icons/gr';
+import { Overlay, ModalStyled, BtnClose } from './Modal.styled';
 
 const modalRoot = document.querySelector('#modal-root');
 
-export class Modal extends Component {
-  static propTypes = {
-    onClick: PropTypes.func,
-    onClose: PropTypes.func,
-    children: PropTypes.node.isRequired,
-  };
+export function Modal({ onClose, children, prevChildren, nextChildren }) {
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  });
 
-  componentDidMount() {
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleKeyDown);
-  }
-
-  handleKeyDown = e => {
+  const handleKeyDown = e => {
     if (e.code === 'Escape') {
-      this.props.onClose();
+      onClose();
     }
   };
 
-  handleBackdropClick = e => {
+  const handleBackdropClick = e => {
     if (e.currentTarget === e.target) {
-      this.props.onClose();
+      onClose();
     }
   };
 
-  render() {
-    return createPortal(
-      <Overlay onClick={this.handleBackdropClick}>
-        <ModalStyled>{this.props.children}</ModalStyled>
-        {/* <button type="button" onClick={this.props.onClose}>
-          <GrClose style={{ width: 30, height: 30 }} />
-        </button> */}
-      </Overlay>,
-      modalRoot
-    );
-  }
+  return createPortal(
+    <Overlay onClick={handleBackdropClick}>
+      <ModalStyled>{children}</ModalStyled>
+      <BtnClose type="button" onClick={onClose}>
+        <GrClose style={{ width: 30, height: 30, margin: 0 }} />
+      </BtnClose>
+    </Overlay>,
+    modalRoot
+  );
 }
+
+Modal.propTypes = {
+  onClose: PropTypes.func,
+  children: PropTypes.node.isRequired,
+};

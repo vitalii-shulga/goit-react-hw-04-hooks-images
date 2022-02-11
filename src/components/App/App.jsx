@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -8,37 +8,43 @@ import { ImageGallery } from 'components/ImageGallery/ImageGallery';
 import { Button } from 'components/Button/Button';
 import { Modal } from 'components/Modal/Modal';
 import { Loader } from 'components/Loader/Loader';
-import { Container } from './App.styled';
+import { Container, LargeImg } from './App.styled';
 
-export class App extends Component {
-  state = {
-    images: [],
-    isLoading: false,
-    query: '',
-    error: null,
-    page: 1,
-    showModal: false,
-    largeImageURL: null,
-  };
+export function App() {
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [tags, setTags] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    const prevQuery = prevState.query;
-    const nextQuery = this.state.query;
+  useEffect(() => {
+    if (!query) return;
+    fetchImages(query, page);
+  }, [query, page]);
 
-    if (prevQuery !== nextQuery) {
-      this.fetchImages();
-    }
-  }
-
-  fetchImages = () => {
-    const { query, page } = this.state;
+  const fetchImages = (query, page) => {
     const perPage = 12;
-
-    this.setState({ isLoading: true });
+    setIsLoading(true);
 
     fetchData(query, page, perPage)
       .then(({ hits, totalHits }) => {
         const totalPages = Math.ceil(totalHits / perPage);
+
+        const data = hits.map(({ id, webformatURL, largeImageURL, tags }) => {
+          return {
+            id,
+            webformatURL,
+            largeImageURL,
+            tags,
+          };
+        });
+
+        setImages(images => [...images, ...data]);
+        setTotal(totalHits);
 
         if (hits.length === 0) {
           return toast.error('Sorry, no images found. Please, try again!');
@@ -51,63 +57,75 @@ export class App extends Component {
         if (page === totalPages) {
           toast.info("You've reached the end of search results.");
         }
-
-        this.setState(({ images, page }) => ({
-          images: [...images, ...hits],
-          page: page + 1,
-          total: totalHits,
-        }));
       })
-      .catch(error => this.setState({ error }))
-      .finally(() => this.setState({ isLoading: false }));
+      .catch(error => setError(error))
+      .finally(() => setIsLoading(false));
   };
 
-  handleSearch = query => {
-    if (query === this.state.query) return;
-    this.setState({
-      images: [],
-      query,
-      page: 1,
-      error: null,
-    });
+  const handleSearch = query => {
+    setQuery(query);
+    setPage(1);
+    setImages([]);
+    setError(null);
   };
 
-  toggleModal = largeImageURL => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
-    this.setState({ largeImageURL: largeImageURL });
+  const toggleModal = (largeImageURL, tags) => {
+    setShowModal(!showModal);
+    setLargeImageURL(largeImageURL);
+    setTags(tags);
   };
 
-  render() {
-    const { images, error, isLoading, showModal, largeImageURL, tags, total } =
-      this.state;
-    const loadImages = images.length !== 0;
-    const isLastPage = images.length === total;
-    const loadMoreBtn = loadImages && !isLoading && !isLastPage;
+  const onLoadMore = () => {
+    setPage(page => page + 1);
+  };
 
-    return (
-      <Container>
-        <SearchBar onSubmit={this.handleSearch} />
+  const loadImages = images.length !== 0;
+  const isLastPage = images.length === total;
+  const loadMoreBtn = loadImages && !isLoading && !isLastPage;
 
-        {error && toast.error(error.message)}
+  return (
+    <Container>
+      <SearchBar onSubmit={handleSearch} />
 
-        {isLoading && <Loader />}
+      {error && toast.error(error.message)}
 
-        {loadImages && (
-          <ImageGallery images={images} onClick={this.toggleModal} />
-        )}
+      {isLoading && <Loader />}
 
-        {loadMoreBtn && <Button onClick={this.fetchImages}>Load more</Button>}
+      {loadImages && <ImageGallery images={images} onClick={toggleModal} />}
 
-        {showModal && (
-          <Modal onClose={this.toggleModal}>
-            <img src={largeImageURL} alt={tags} />
-          </Modal>
-        )}
+      {loadMoreBtn && <Button onClick={onLoadMore}>Load more</Button>}
 
-        <ToastContainer theme="colored" position="top-right" autoClose={3000} />
-      </Container>
-    );
-  }
+      {showModal && (
+        <Modal onClose={toggleModal}>
+          <LargeImg src={largeImageURL} alt={tags} />
+        </Modal>
+      )}
+
+      <ToastContainer theme="colored" position="top-right" autoClose={3000} />
+    </Container>
+  );
+
+  // return (
+  //   <Container>
+  //     <SearchBar onSubmit={handleSearch} />
+
+  //     <ImageGallery images={images} onClick={toggleModal} />
+
+  //     {images.length !== totalHits && !isLoading && (
+  //       <Button onClick={onLoadMoreClick}>Load more</Button>
+  //     )}
+
+  //     {showModal && (
+  //       <Modal onClose={toggleModal}>
+  //         <LargeImg src={largeImageURL} alt={tags} />
+  //       </Modal>
+  //     )}
+
+  //     {error && toast.error(error.message)}
+
+  //     {isLoading && <Loader />}
+
+  //     <ToastContainer theme="colored" position="top-right" autoClose={3000} />
+  //   </Container>
+  // );
 }
